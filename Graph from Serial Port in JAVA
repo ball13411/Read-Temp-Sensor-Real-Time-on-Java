@@ -1,0 +1,110 @@
+package package2;
+
+import com.fazecast.jSerialComm.SerialPort;
+import javax.swing.JFrame;
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Scanner;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JPanel;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.Enumeration;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.data.category.DefaultCategoryDataset;
+
+public class SensorGraph {
+  
+	// Set Port
+    static SerialPort chosenPort;
+    static int x = 2;
+    
+    public static void main(String[] args) {
+        
+        // Main GUI Graph Sensor
+        JFrame window = new JFrame();
+        window.setTitle("Sensor Graph GUI");					// Set title
+        window.setSize(600,400);								// Set Position and Size
+        window.setLayout(new BorderLayout());
+        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	// Show on GUI
+        
+       //  JBotton "Connect"
+       JComboBox<String> portList = new JComboBox<String>();	
+       JButton connectButton = new JButton("Connect");    		// Create JButton "Connect"			
+       
+       // JPanel
+       JPanel topPanel = new JPanel();
+       topPanel.add(portList);									// add JPanel
+       topPanel.add(connectButton);								// add ConnectButton to JButton
+       window.add(topPanel, BorderLayout.NORTH);				// Show on GUI
+       
+       //ส่วนของการอ่าน Port   (Serail Port)
+       SerialPort[] portNames = SerialPort.getCommPorts();
+       for(int i = 0; i < portNames.length; i++)
+           portList.addItem(portNames[i].getSystemPortName());
+       
+       // ส่วนของ Graph
+       XYSeries series = new XYSeries("Temp Sensor Reading");							// Create XYSerail 
+       XYSeriesCollection dataset = new XYSeriesCollection(series);						// Create DataSet
+       JFreeChart chart = ChartFactory.createXYLineChart("Temp Sensor Reading","Time(s)","Temp(C)",dataset);
+       window.add(new ChartPanel(chart),BorderLayout.CENTER); 							// add Chart on to GUI
+       
+       // Action Event ของปุ่ม Connect Button
+       connectButton.addActionListener(new ActionListener(){
+           public void actionPerformed(ActionEvent arg0) {
+               if(connectButton.getText().equals("Connect")) {										// Connect Port
+                   chosenPort = SerialPort.getCommPort(portList.getSelectedItem().toString());		// Select Port
+                   chosenPort.setComPortTimeouts(SerialPort.TIMEOUT_SCANNER,0,0);					// Connect port
+                   if(chosenPort.openPort()) {
+                       connectButton.setText("Disconnect");											// if Connect
+                       portList.setEnabled(false);
+                   }
+                   Thread thread = new Thread(){
+                         public void run() {
+                            try (Scanner scanner = new Scanner(chosenPort.getInputStream())) {  	// Read Data from Serial Port
+                                int x = 0;															// Set data
+                                while(scanner.hasNextLine()) {										// Read line
+                                    try{
+                                        String line = scanner.nextLine();							// Connect and Read Serial Port
+                                        int number = Integer.parseInt(line);						// Set line or Data
+                                        series.add(x++,number);										// add Data to Chart
+                                        window.repaint();
+                                    }catch(Exception e) {}
+                                }
+                            }
+                        }
+                   };
+                   thread.start();
+                }else {										// Disconnect
+                   chosenPort.closePort();	
+                   portList.setEnabled(true);
+                   connectButton.setText("Connect");
+                   series.clear();
+                   int x = 0;
+                }
+            }
+       });
+       //
+       window.setVisible(true);								// Show on GUI
+    }
+
+
+    public void setVisible(boolean aa) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+    }
+
+    
+    
+
